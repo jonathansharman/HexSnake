@@ -7,16 +7,157 @@ import TwoCansAlpha2;
 const X_RES = 640;
 const Y_RES = 480;
 
+const HEX_RADIUS = 10.0;
+const GRID_RADIUS = 10;
+
 class MainScene : AbstractScene {
+	static function axialToPixel(q, r) {
+		return
+			[ X_RES / 2.0 + 2.0 * Math.sin(Math.PI / 3) * HEX_RADIUS * q
+			, Y_RES / 2.0 - 2.0 * HEX_RADIUS * r + HEX_RADIUS * q
+			];
+	}
+
+	field offsets;
+	field segments;
+	field dir = 0;
+	field period = 5;
+	field counter = this.period;
+
 	constructor() : base() {
+		// Specifying each point as a function of these three variables rather than
+		// as a single function of the index to avoid rounding errors.
+		r = HEX_RADIUS / Math.sin(Math.PI / 3.0);
+		sin60 = Math.sin(Math.PI / 3.0);
+		cos60 = Math.cos(Math.PI / 3.0);
+		this.offsets =
+			[ [r, 0.0]
+			, [r * cos60, r * sin60]
+			, [-r * cos60, r * sin60]
+			, [-r, 0.0]
+			, [-r * cos60, -r * sin60]
+			, [r * cos60, -r * sin60]
+			];
+
+		this.segments =
+			[ [-4, 0]
+			, [-3, 0]
+			, [-2, 0]
+			, [-1, 0]
+			, [0, 0]
+			];
+	}
+
+	function getDistance(q, r) {
+		return (Math.abs(q) + Math.abs(r) + Math.abs(q - r)) / 2;
 	}
 
 	function update(inputManager, events) {
+		if (inputManager.isKeyPressed(KeyboardKey.D)) {
+			if (this.dir != 3) this.dir = 0;
+		}
+		if (inputManager.isKeyPressed(KeyboardKey.E)) {
+			if (this.dir != 4) this.dir = 1;
+		}
+		if (inputManager.isKeyPressed(KeyboardKey.W)) {
+			if (this.dir != 5) this.dir = 2;
+		}
+		if (inputManager.isKeyPressed(KeyboardKey.Q)) {
+			if (this.dir != 0) this.dir = 3;
+		}
+		if (inputManager.isKeyPressed(KeyboardKey.A)) {
+			if (this.dir != 1) this.dir = 4;
+		}
+		if (inputManager.isKeyPressed(KeyboardKey.S)) {
+			if (this.dir != 2) this.dir = 5;
+		}
+
+		--this.counter;
+		if (this.counter == 0) {
+			this.counter = this.period;
+			lastSegment = this.segments[this.segments.length - 1];
+			q = lastSegment[0];
+			r = lastSegment[1];
+			switch (this.dir) {
+				case 0:
+					++q;
+					break;
+				case 1:
+					++q;
+					++r;
+					break;
+				case 2:
+					++r;
+					break;
+				case 3:
+					--q;
+					break;
+				case 4:
+					--q;
+					--r;
+					break;
+				case 5:
+					--r;
+					break;
+			}
+			if (this.getDistance(q, r) <= GRID_RADIUS) {
+				this.segments.add([q, r]);
+				this.segments.remove(0);
+			}
+		}
 	}
 
 	function render() {
 		Graphics2D.Draw.fill(212, 212, 212);
 
-		
+		for (q = -GRID_RADIUS; q <= GRID_RADIUS; ++q) {
+			for (r = -GRID_RADIUS; r <= GRID_RADIUS; ++r) {
+				distance = this.getDistance(q, r);
+				// Bound distance.
+				if (distance > GRID_RADIUS) continue;
+
+				// Get hex center.
+				center = MainScene.axialToPixel(q, r);
+				x = center[0];
+				y = center[1];
+
+				// Draw fill.
+				color = 192 - distance * 10;
+				for (i = 0; i < this.offsets.length; ++i) {
+					v1 = this.offsets[i];
+					v2 = this.offsets[(i + 1) % this.offsets.length];
+					Graphics2D.Draw.triangle
+						( x, y
+						, x + v1[0], y + v1[1]
+						, x + v2[0], y + v2[1]
+						, color, color, color
+						);
+				}
+
+				// Draw outline.
+				for (i = 0; i < this.offsets.length; ++i) {
+					v1 = this.offsets[i];
+					v2 = this.offsets[(i + 1) % this.offsets.length];
+					Graphics2D.Draw.line
+						( x + v1[0], y + v1[1]
+						, x + v2[0], y + v2[1]
+						, 1
+						, 0, 0, 0
+						);
+				}
+			}
+		}
+
+		// Draw snake.
+		for (segment : this.segments) {
+			center = MainScene.axialToPixel(segment[0], segment[1]);
+			x = center[0];
+			y = center[1];
+			Graphics2D.Draw.ellipse
+				( x - HEX_RADIUS / 2, y - HEX_RADIUS / 2
+				, HEX_RADIUS, HEX_RADIUS
+				, 255, 255, 0
+				);
+		}
 	}
 }
