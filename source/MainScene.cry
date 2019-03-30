@@ -1,0 +1,22 @@
+import Graphics2D;
+import Graphics2DText;
+import Math;
+import Random;
+import TwoCansAlpha2;
+
+const X_RES = 640;
+const Y_RES = 480;
+
+class MainScene : AbstractScene {
+	constructor() : base() {
+	}
+
+	function update(inputManager, events) {
+	}
+
+	function render() {
+		Graphics2D.Draw.fill(212, 212, 212);
+
+		
+	}
+}
