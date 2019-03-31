@@ -3,6 +3,7 @@ import Graphics2DText;
 import Math;
 import Random;
 import TwoCansAlpha2;
+import UserData;
 
 const X_RES = 640;
 const Y_RES = 480;
@@ -39,10 +40,12 @@ class MainScene : AbstractScene {
 	field alive = true;
 	field paused = true;
 	field scoreText;
+	field highScore;
+	field highScoreText;
 
 	static constructor() {
-		MainScene.pausedText = MainScene.font.render("Paused");
-		MainScene.gameOverText = MainScene.font.render("Game Over");
+		MainScene.pausedText = MainScene.font.render(" Paused ");
+		MainScene.gameOverText = MainScene.font.render(" Game Over ");
 	}
 
 	static function getDistance(q, r) {
@@ -73,11 +76,27 @@ class MainScene : AbstractScene {
 
 		this.moveFood();
 
+		if (UserData.fileExists("high-score.txt")) {
+			lines = UserData.fileReadLines("high-score.txt");
+			this.highScore = parseInt(lines[0]);
+		} else {
+			this.highScore = 0;
+			UserData.fileWriteText("high-score.txt", "0");
+		}
 		this.updateScore();
 	}
 
 	function updateScore() {
-		this.scoreText = MainScene.font.render(" " + this.segments.length);
+		score = this.segments.length;
+		this.scoreText = MainScene.font.setColor(255, 255, 255).render(" " + score + " ");
+		if (score > this.highScore) {
+			this.highScore = score;
+			UserData.fileWriteText("high-score.txt", this.highScore);
+			MainScene.font.setColor(0, 255, 0);
+		} else {
+			MainScene.font.setColor(128, 128, 128);
+		}
+		this.highScoreText = MainScene.font.render(" " + this.highScore + " ");
 	}
 
 	function moveFood() {
@@ -120,22 +139,22 @@ class MainScene : AbstractScene {
 
 		// Move.
 		if (this.moveBuffer.length < 2) {
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.D)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.D) || inputManager.isKeyPressedThisFrame(KeyboardKey.L)) {
 				this.moveBuffer.add(0);
 			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.E)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.E) || inputManager.isKeyPressedThisFrame(KeyboardKey.O)) {
 				this.moveBuffer.add(1);
 			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.W)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.W) || inputManager.isKeyPressedThisFrame(KeyboardKey.I)) {
 				this.moveBuffer.add(2);
 			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q) || inputManager.isKeyPressedThisFrame(KeyboardKey.U)) {
 				this.moveBuffer.add(3);
 			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.A)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.A) || inputManager.isKeyPressedThisFrame(KeyboardKey.J)) {
 				this.moveBuffer.add(4);
 			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.S)) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.S) || inputManager.isKeyPressedThisFrame(KeyboardKey.K)) {
 				this.moveBuffer.add(5);
 			}
 		}
@@ -192,9 +211,16 @@ class MainScene : AbstractScene {
 				this.segments.insert(0, tail);
 				this.moveFood();
 				this.period = Math.max(0.0, this.period - SPEEDUP);
+				this.updateScore();
 			}
-			this.updateScore();
 		}
+	}
+
+	function drawCenterText(text) {
+		x = (X_RES - text.width) / 2;
+		y = (Y_RES - text.height) / 2;
+		Graphics2D.Draw.rectangle(x, y, text.width, text.height, 0, 0, 0, 128);
+		text.draw(x, y);
 	}
 
 	function render() {
@@ -262,21 +288,16 @@ class MainScene : AbstractScene {
 
 		// Draw pause indicator.
 		if (this.paused) {
-			MainScene.pausedText.draw
-				( (X_RES - MainScene.pausedText.width) / 2
-				, (Y_RES - MainScene.pausedText.height) / 2
-				);
+			this.drawCenterText(MainScene.pausedText);
 		}
 
 		// Draw game over indicator.
 		if (!this.alive) {
-			MainScene.gameOverText.draw
-				( (X_RES - MainScene.gameOverText.width) / 2
-				, (Y_RES - MainScene.gameOverText.height) / 2
-				);
+			this.drawCenterText(MainScene.gameOverText);
 		}
 
-		// Draw current length.
+		// Draw score and high score.
 		this.scoreText.draw(0, 0);
+		this.highScoreText.draw(X_RES - this.highScoreText.width, 0);
 	}
 }
