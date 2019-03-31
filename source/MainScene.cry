@@ -10,7 +10,18 @@ const Y_RES = 480;
 const HEX_RADIUS = 10.0;
 const GRID_RADIUS = 10;
 
+const INITIAL_SEGMENTS = 3;
+
+const INITIAL_PERIOD = 12.0;
+const SPEEDUP = 0.04;
+
 class MainScene : AbstractScene {
+	static field font = FontResource.fromSystem("Times New Roman").getRenderer()
+			.setColor(255, 255, 255)
+			.setSize(20);
+	static field pausedText;
+	static field gameOverText;
+
 	static function axialToPixel(q, r) {
 		return
 			[ X_RES / 2.0 + 2.0 * Math.sin(Math.PI / 3) * HEX_RADIUS * q
@@ -21,10 +32,26 @@ class MainScene : AbstractScene {
 	field offsets;
 	field segments;
 	field dir = 0;
-	field period = 5;
+	field period = INITIAL_PERIOD;
 	field counter = this.period;
+	field moveBuffer = [];
+	field food;
+	field alive = true;
+	field paused = true;
+	field scoreText;
 
-	constructor() : base() {
+	static constructor() {
+		MainScene.pausedText = MainScene.font.render("Paused");
+		MainScene.gameOverText = MainScene.font.render("Game Over");
+	}
+
+	static function getDistance(q, r) {
+		return (Math.abs(q) + Math.abs(r) + Math.abs(q - r)) / 2;
+	}
+
+	constructor(paused = true) : base() {
+		this.paused = paused;
+
 		// Specifying each point as a function of these three variables rather than
 		// as a single function of the index to avoid rounding errors.
 		r = HEX_RADIUS / Math.sin(Math.PI / 3.0);
@@ -39,42 +66,89 @@ class MainScene : AbstractScene {
 			, [r * cos60, -r * sin60]
 			];
 
-		this.segments =
-			[ [-4, 0]
-			, [-3, 0]
-			, [-2, 0]
-			, [-1, 0]
-			, [0, 0]
-			];
+		this.segments = [];
+		for (q = -GRID_RADIUS + 1; q <= -GRID_RADIUS + INITIAL_SEGMENTS; ++q) {
+			this.segments.add([q, 0]);
+		}
+
+		this.moveFood();
+
+		this.updateScore();
 	}
 
-	function getDistance(q, r) {
-		return (Math.abs(q) + Math.abs(r) + Math.abs(q - r)) / 2;
+	function updateScore() {
+		this.scoreText = MainScene.font.render(" " + this.segments.length);
+	}
+
+	function moveFood() {
+		while (true) {
+			q = Random.randomInt(-GRID_RADIUS, GRID_RADIUS + 1);
+			r = Random.randomInt(-GRID_RADIUS, GRID_RADIUS + 1);
+			if (MainScene.getDistance(q, r) > GRID_RADIUS) {
+				continue;
+			}
+			validSpace = true;
+			for (segment : this.segments) {
+				if (q == segment[0] && r == segment[1]) {
+					validSpace = false;
+					break;
+				}
+			}
+			if (validSpace) {
+				break;
+			}
+		}
+		this.food = [q, r];
 	}
 
 	function update(inputManager, events) {
-		if (inputManager.isKeyPressed(KeyboardKey.D)) {
-			if (this.dir != 3) this.dir = 0;
-		}
-		if (inputManager.isKeyPressed(KeyboardKey.E)) {
-			if (this.dir != 4) this.dir = 1;
-		}
-		if (inputManager.isKeyPressed(KeyboardKey.W)) {
-			if (this.dir != 5) this.dir = 2;
-		}
-		if (inputManager.isKeyPressed(KeyboardKey.Q)) {
-			if (this.dir != 0) this.dir = 3;
-		}
-		if (inputManager.isKeyPressed(KeyboardKey.A)) {
-			if (this.dir != 1) this.dir = 4;
-		}
-		if (inputManager.isKeyPressed(KeyboardKey.S)) {
-			if (this.dir != 2) this.dir = 5;
+		// Restarting.
+		if (!this.alive) {
+			if (inputManager.isKeyPressed(KeyboardKey.SPACE) || inputManager.isKeyPressed(KeyboardKey.ENTER)) {
+				this.switchScene(new MainScene(false));
+			}
+			return;
 		}
 
-		--this.counter;
-		if (this.counter == 0) {
-			this.counter = this.period;
+		// Pausing.
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.SPACE) || inputManager.isKeyPressedThisFrame(KeyboardKey.ENTER)) {
+			this.paused = !this.paused;
+		}
+		if (this.paused) {
+			return;
+		}
+
+		// Move.
+		if (this.moveBuffer.length < 2) {
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.D)) {
+				this.moveBuffer.add(0);
+			}
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.E)) {
+				this.moveBuffer.add(1);
+			}
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.W)) {
+				this.moveBuffer.add(2);
+			}
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q)) {
+				this.moveBuffer.add(3);
+			}
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.A)) {
+				this.moveBuffer.add(4);
+			}
+			if (inputManager.isKeyPressedThisFrame(KeyboardKey.S)) {
+				this.moveBuffer.add(5);
+			}
+		}
+
+		this.counter -= 1.0;
+		if (this.counter <= 0.0) {
+			if (this.moveBuffer.length > 0) {
+				if (this.moveBuffer[0] != (this.dir + 3) % 6) {
+					this.dir = this.moveBuffer[0];
+				}
+				this.moveBuffer.remove(0);
+			}
+			this.counter += this.period;
 			lastSegment = this.segments[this.segments.length - 1];
 			q = lastSegment[0];
 			r = lastSegment[1];
@@ -100,19 +174,35 @@ class MainScene : AbstractScene {
 					--r;
 					break;
 			}
-			if (this.getDistance(q, r) <= GRID_RADIUS) {
-				this.segments.add([q, r]);
-				this.segments.remove(0);
+			tail = this.segments[0].clone();
+			this.segments.remove(0);
+			for (segment : this.segments) {
+				if (q == segment[0] && r == segment[1]) {
+					// Self-collision.
+					this.alive = false;
+				}
 			}
+			if (MainScene.getDistance(q, r) > GRID_RADIUS) {
+				// Out of bounds.
+				this.alive = false;
+			}
+			this.segments.add([q, r]);
+			if (q == this.food[0] && r == this.food[1]) {
+				// Got food!
+				this.segments.insert(0, tail);
+				this.moveFood();
+				this.period = Math.max(0.0, this.period - SPEEDUP);
+			}
+			this.updateScore();
 		}
 	}
 
 	function render() {
-		Graphics2D.Draw.fill(212, 212, 212);
+		Graphics2D.Draw.fill(0, 0, 0);
 
 		for (q = -GRID_RADIUS; q <= GRID_RADIUS; ++q) {
 			for (r = -GRID_RADIUS; r <= GRID_RADIUS; ++r) {
-				distance = this.getDistance(q, r);
+				distance = MainScene.getDistance(q, r);
 				// Bound distance.
 				if (distance > GRID_RADIUS) continue;
 
@@ -120,19 +210,6 @@ class MainScene : AbstractScene {
 				center = MainScene.axialToPixel(q, r);
 				x = center[0];
 				y = center[1];
-
-				// Draw fill.
-				color = 192 - distance * 10;
-				for (i = 0; i < this.offsets.length; ++i) {
-					v1 = this.offsets[i];
-					v2 = this.offsets[(i + 1) % this.offsets.length];
-					Graphics2D.Draw.triangle
-						( x, y
-						, x + v1[0], y + v1[1]
-						, x + v2[0], y + v2[1]
-						, color, color, color
-						);
-				}
 
 				// Draw outline.
 				for (i = 0; i < this.offsets.length; ++i) {
@@ -142,22 +219,64 @@ class MainScene : AbstractScene {
 						( x + v1[0], y + v1[1]
 						, x + v2[0], y + v2[1]
 						, 1
-						, 0, 0, 0
+						, 128, 128, 128
 						);
 				}
 			}
 		}
 
 		// Draw snake.
-		for (segment : this.segments) {
-			center = MainScene.axialToPixel(segment[0], segment[1]);
-			x = center[0];
-			y = center[1];
+		snakeColor = this.alive ? [0, 212, 255] : [255, 0, 0];
+		current = this.segments[0];
+		currentCenter = MainScene.axialToPixel(current[0], current[1]);
+		for (i = 0; i < this.segments.length - 1; ++i) {
+			next = this.segments[i + 1];
+			nextCenter = MainScene.axialToPixel(next[0], next[1]);
 			Graphics2D.Draw.ellipse
-				( x - HEX_RADIUS / 2, y - HEX_RADIUS / 2
-				, HEX_RADIUS, HEX_RADIUS
-				, 255, 255, 0
+				( currentCenter[0] - HEX_RADIUS / 2 + 1, currentCenter[1] - HEX_RADIUS / 2 + 1
+				, HEX_RADIUS - 1, HEX_RADIUS - 1
+				, snakeColor[0], snakeColor[1], snakeColor[2]
+				);
+			Graphics2D.Draw.line
+				( currentCenter[0], currentCenter[1]
+				, nextCenter[0], nextCenter[1]
+				, 3
+				, snakeColor[0], snakeColor[1], snakeColor[2]
+				);
+			current = next;
+			currentCenter = nextCenter;
+		}
+		Graphics2D.Draw.ellipse
+			( nextCenter[0] - HEX_RADIUS / 2, nextCenter[1] - HEX_RADIUS / 2
+			, HEX_RADIUS - 1, HEX_RADIUS - 1
+			, snakeColor[0], snakeColor[1], snakeColor[2]
+			);
+
+		// Draw food.
+		foodCenter = MainScene.axialToPixel(this.food[0], this.food[1]);
+		Graphics2D.Draw.ellipse
+			( foodCenter[0] - HEX_RADIUS / 2, foodCenter[1] - HEX_RADIUS / 2
+			, HEX_RADIUS, HEX_RADIUS
+			, 255, 255, 0
+			);
+
+		// Draw pause indicator.
+		if (this.paused) {
+			MainScene.pausedText.draw
+				( (X_RES - MainScene.pausedText.width) / 2
+				, (Y_RES - MainScene.pausedText.height) / 2
 				);
 		}
+
+		// Draw game over indicator.
+		if (!this.alive) {
+			MainScene.gameOverText.draw
+				( (X_RES - MainScene.gameOverText.width) / 2
+				, (Y_RES - MainScene.gameOverText.height) / 2
+				);
+		}
+
+		// Draw current length.
+		this.scoreText.draw(0, 0);
 	}
 }
