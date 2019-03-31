@@ -35,7 +35,8 @@ class MainScene : AbstractScene {
 	field dir = 0;
 	field period = INITIAL_PERIOD;
 	field counter = this.period;
-	field moveBuffer = [];
+	field currentMove = null;
+	field nextMove = null;
 	field food;
 	field alive = true;
 	field paused = true;
@@ -137,35 +138,43 @@ class MainScene : AbstractScene {
 			return;
 		}
 
-		// Move.
-		if (this.moveBuffer.length < 2) {
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.D) || inputManager.isKeyPressedThisFrame(KeyboardKey.L)) {
-				this.moveBuffer.add(0);
-			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.E) || inputManager.isKeyPressedThisFrame(KeyboardKey.O)) {
-				this.moveBuffer.add(1);
-			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.W) || inputManager.isKeyPressedThisFrame(KeyboardKey.I)) {
-				this.moveBuffer.add(2);
-			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q) || inputManager.isKeyPressedThisFrame(KeyboardKey.U)) {
-				this.moveBuffer.add(3);
-			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.A) || inputManager.isKeyPressedThisFrame(KeyboardKey.J)) {
-				this.moveBuffer.add(4);
-			}
-			if (inputManager.isKeyPressedThisFrame(KeyboardKey.S) || inputManager.isKeyPressedThisFrame(KeyboardKey.K)) {
-				this.moveBuffer.add(5);
+		// Input move.
+		inputMove = null;
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.D) || inputManager.isKeyPressedThisFrame(KeyboardKey.L)) {
+			inputMove = 0;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.E) || inputManager.isKeyPressedThisFrame(KeyboardKey.O)) {
+			inputMove = 1;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.W) || inputManager.isKeyPressedThisFrame(KeyboardKey.I)) {
+			inputMove = 2;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q) || inputManager.isKeyPressedThisFrame(KeyboardKey.U)) {
+			inputMove = 3;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.A) || inputManager.isKeyPressedThisFrame(KeyboardKey.J)) {
+			inputMove = 4;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.S) || inputManager.isKeyPressedThisFrame(KeyboardKey.K)) {
+			inputMove = 5;
+		}
+		if (inputMove != null) {
+			if (this.currentMove == null) {
+				this.currentMove = inputMove;
+			} else {
+				this.nextMove = inputMove;
 			}
 		}
 
+		// Move.
 		this.counter -= 1.0;
 		if (this.counter <= 0.0) {
-			if (this.moveBuffer.length > 0) {
-				if (this.moveBuffer[0] != (this.dir + 3) % 6) {
-					this.dir = this.moveBuffer[0];
+			if (this.currentMove != null) {
+				if (this.currentMove != (this.dir + 3) % 6) {
+					this.dir = this.currentMove;
 				}
-				this.moveBuffer.remove(0);
+				this.currentMove = this.nextMove;
+				this.nextMove = null;
 			}
 			this.counter += this.period;
 			lastSegment = this.segments[this.segments.length - 1];
@@ -216,7 +225,7 @@ class MainScene : AbstractScene {
 		}
 	}
 
-	function drawCenterText(text) {
+	function drawCenteredText(text) {
 		x = (X_RES - text.width) / 2;
 		y = (Y_RES - text.height) / 2;
 		Graphics2D.Draw.rectangle(x, y, text.width, text.height, 0, 0, 0, 128);
@@ -288,12 +297,12 @@ class MainScene : AbstractScene {
 
 		// Draw pause indicator.
 		if (this.paused) {
-			this.drawCenterText(MainScene.pausedText);
+			this.drawCenteredText(MainScene.pausedText);
 		}
 
 		// Draw game over indicator.
 		if (!this.alive) {
-			this.drawCenterText(MainScene.gameOverText);
+			this.drawCenteredText(MainScene.gameOverText);
 		}
 
 		// Draw score and high score.
