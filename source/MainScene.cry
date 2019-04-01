@@ -22,6 +22,7 @@ class MainScene : AbstractScene {
 			.setSize(20);
 	static field pausedText;
 	static field gameOverText;
+	static field helpText;
 
 	static function axialToPixel(q, r) {
 		return
@@ -40,13 +41,16 @@ class MainScene : AbstractScene {
 	field food;
 	field alive = true;
 	field paused = true;
+	field helpHovered;
 	field scoreText;
 	field highScore;
 	field highScoreText;
+	field mousePos;
 
 	static constructor() {
 		MainScene.pausedText = MainScene.font.render(" Paused ");
 		MainScene.gameOverText = MainScene.font.render(" Game Over ");
+		MainScene.helpText = MainScene.font.render(" Help ");
 	}
 
 	static function getDistance(q, r) {
@@ -122,6 +126,13 @@ class MainScene : AbstractScene {
 	}
 
 	function update(inputManager, events) {
+		// Help.
+		this.mousePos = inputManager.getMousePosition();
+		this.helpHovered = inputManager.isMouseOver
+			( X_RES - MainScene.helpText.width, Y_RES - MainScene.helpText.height
+			, MainScene.helpText.width, MainScene.helpText.height
+			);
+
 		// Restarting.
 		if (!this.alive) {
 			if (inputManager.isKeyPressed(KeyboardKey.SPACE) || inputManager.isKeyPressed(KeyboardKey.ENTER)) {
@@ -134,7 +145,7 @@ class MainScene : AbstractScene {
 		if (inputManager.isKeyPressedThisFrame(KeyboardKey.SPACE) || inputManager.isKeyPressedThisFrame(KeyboardKey.ENTER)) {
 			this.paused = !this.paused;
 		}
-		if (this.paused) {
+		if (this.paused || this.helpHovered) {
 			return;
 		}
 
@@ -296,7 +307,7 @@ class MainScene : AbstractScene {
 			);
 
 		// Draw pause indicator.
-		if (this.paused) {
+		if (this.paused || this.helpHovered) {
 			this.drawCenteredText(MainScene.pausedText);
 		}
 
@@ -308,5 +319,14 @@ class MainScene : AbstractScene {
 		// Draw score and high score.
 		this.scoreText.draw(0, 0);
 		this.highScoreText.draw(X_RES - this.highScoreText.width, 0);
+
+		// Draw help text.
+		MainScene.helpText.draw(X_RES - MainScene.helpText.width, Y_RES - MainScene.helpText.height);
+
+		// Draw help.
+		if (this.helpHovered) {
+			help = Images.get("instructions.png");
+			help.draw(this.mousePos[0] - help.width, this.mousePos[1] - help.height);
+		}
 	}
 }
