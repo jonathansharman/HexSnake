@@ -149,31 +149,63 @@ class MainScene : AbstractScene {
 			return;
 		}
 
-		// Input move.
-		inputMove = null;
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.D) || inputManager.isKeyPressedThisFrame(KeyboardKey.L)) {
-			inputMove = 0;
-		}
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.E) || inputManager.isKeyPressedThisFrame(KeyboardKey.O)) {
-			inputMove = 1;
-		}
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.W) || inputManager.isKeyPressedThisFrame(KeyboardKey.I)) {
-			inputMove = 2;
-		}
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.Q) || inputManager.isKeyPressedThisFrame(KeyboardKey.U)) {
-			inputMove = 3;
-		}
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.A) || inputManager.isKeyPressedThisFrame(KeyboardKey.J)) {
-			inputMove = 4;
-		}
-		if (inputManager.isKeyPressedThisFrame(KeyboardKey.S) || inputManager.isKeyPressedThisFrame(KeyboardKey.K)) {
-			inputMove = 5;
-		}
-		if (inputMove != null) {
-			if (this.currentMove == null) {
-				this.currentMove = inputMove;
-			} else {
-				this.nextMove = inputMove;
+		// Input moves.
+		for (e : events) {
+			switch (e.type) {
+				case EventType.KEY:
+					if (e.down) {
+						switch (e.key) {
+							case KeyboardKey.D:
+								inputMove = 0;
+								break;
+							case KeyboardKey.L:
+								inputMove = 0;
+								break;
+							case KeyboardKey.E:
+								inputMove = 1;
+								break;
+							case KeyboardKey.O:
+								inputMove = 1;
+								break;
+							case KeyboardKey.W:
+								inputMove = 2;
+								break;
+							case KeyboardKey.I:
+								inputMove = 2;
+								break;
+							case KeyboardKey.Q:
+								inputMove = 3;
+								break;
+							case KeyboardKey.U:
+								inputMove = 3;
+								break;
+							case KeyboardKey.A:
+								inputMove = 4;
+								break;
+							case KeyboardKey.J:
+								inputMove = 4;
+								break;
+							case KeyboardKey.S:
+								inputMove = 5;
+								break;
+							case KeyboardKey.K:
+								inputMove = 5;
+								break;
+							default:
+								inputMove = null;
+								break;
+						}
+						if (inputMove != null) {
+							if (this.currentMove == null) {
+								this.currentMove = inputMove;
+							} else {
+								this.nextMove = inputMove;
+							}
+						}
+					}
+					break;
+				default:
+					break;
 			}
 		}
 
