@@ -306,14 +306,12 @@ class MainScene : AbstractScene {
 			, 255, 255, 0
 			);
 
-		// Draw pause indicator.
-		if (this.paused || this.helpHovered) {
-			this.drawCenteredText(MainScene.pausedText);
-		}
-
-		// Draw game over indicator.
 		if (!this.alive) {
+			// Draw game over indicator.
 			this.drawCenteredText(MainScene.gameOverText);
+		} else if (this.paused || this.helpHovered) {
+			// Draw pause indicator.
+			this.drawCenteredText(MainScene.pausedText);
 		}
 
 		// Draw score and high score.
