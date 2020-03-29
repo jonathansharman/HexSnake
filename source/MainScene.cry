@@ -2,7 +2,7 @@ import Graphics2D;
 import Graphics2DText;
 import Math;
 import Random;
-import TwoCansAlpha2;
+import TwoCansAlpha4;
 import UserData;
 
 const X_RES = 640;
